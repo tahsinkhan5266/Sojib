@@ -1,0 +1,86 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// I2C LCD: address 0x27, 16 columns, 2 rows
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Pin configuration
+const int smokeSensor = A0;  // MQ-2 analog output
+const int fireSensor = 8;    // Flame sensor digital output
+const int buzzer = 9;        // Buzzer positive pin
+
+// Adjust according to sensor readings
+const int smokeThreshold = 350;
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(fireSensor, INPUT);
+  pinMode(buzzer, OUTPUT);
+
+  noTone(buzzer);
+
+  lcd.init();
+  lcd.backlight();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Fire & Smoke");
+  lcd.setCursor(0, 1);
+  lcd.print("Detector Start");
+  delay(2000);
+  lcd.clear();
+
+  // Startup buzzer test
+  tone(buzzer, 1000);
+  delay(200);
+  noTone(buzzer);
+  delay(300);
+}
+
+void loop() {
+  int smokeValue = analogRead(smokeSensor);
+  int fireValue = digitalRead(fireSensor);
+
+  // Most flame sensor modules output LOW when flame is detected
+  bool fireDetected = (fireValue == LOW);
+  bool smokeDetected = (smokeValue > smokeThreshold);
+
+  // Serial Monitor output
+  Serial.print("Smoke: ");
+  Serial.print(smokeValue);
+  Serial.print(" | Fire: ");
+  Serial.print(fireDetected ? "DETECTED" : "NOT DETECTED");
+  Serial.print(" | Smoke Status: ");
+  Serial.println(smokeDetected ? "DETECTED" : "SAFE");
+
+  // LCD and buzzer alerts
+  if (fireDetected || smokeDetected) {
+    tone(buzzer, 1000);
+
+    lcd.setCursor(0, 0);
+    lcd.print("!! DANGER !!    ");
+
+    lcd.setCursor(0, 1);
+
+    if (fireDetected && smokeDetected) {
+      lcd.print("Fire + Smoke    ");
+    } else if (fireDetected) {
+      lcd.print("Fire Detected   ");
+    } else {
+      lcd.print("Smoke Detected  ");
+    }
+
+  } else {
+    noTone(buzzer);
+
+    lcd.setCursor(0, 0);
+    lcd.print("Status: SAFE    ");
+
+    lcd.setCursor(0, 1);
+    lcd.print("Smoke: ");
+    lcd.print(smokeValue);
+    lcd.print("       ");
+  }
+
+  delay(200);
+}
